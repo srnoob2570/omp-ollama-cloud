@@ -73,9 +73,7 @@ describe("summarize + formatLiveLine", () => {
   });
 
   test("empty summary renders the placeholder", () => {
-    expect(formatLiveLine(summarize([]))).toBe(
-      "— tok/s · TTFT — ms · Session average",
-    );
+    expect(formatLiveLine(summarize([]))).toBe("— tok/s · TTFT — ms");
   });
 
   test("weighted TPS over steps, mean TTFT, live line format", () => {
@@ -83,8 +81,6 @@ describe("summarize + formatLiveLine", () => {
     expect(summary.avgTps).toBeCloseTo(100 / 1.5, 5);
     expect(summary.avgTtftMs).toBe(400);
     expect(summary.steps).toBe(2);
-    expect(formatLiveLine(summary)).toBe(
-      "66.7 tok/s · TTFT 400 ms · Session average",
-    );
+    expect(formatLiveLine(summary)).toBe("66.7 tok/s · TTFT 400 ms");
   });
 });
