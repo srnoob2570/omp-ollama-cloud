@@ -55,9 +55,8 @@ Environment variables (read once at startup):
 | `OMP_OLLAMA_CLOUD_DEBUG` | unset | `on` logs one debug notification per completed assistant step |
 
 Note: omp caches the dynamic model list per provider (SQLite, 24 h TTL) in
-`~/.omp/agent/models.db`. After flipping `OMP_OLLAMA_CLOUD_PRICING` you may
-need to clear the `ollama-cloud` row of `model_cache` (or wait for TTL) to
-see the change.
+`~/.omp/agent/models.db`. After flipping `OMP_OLLAMA_CLOUD_PRICING`, run
+`omp models refresh` to force a fresh fetch and see the change immediately.
 
 ## Catalog upstream
 
