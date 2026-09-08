@@ -1,13 +1,13 @@
 # omp-ollama-cloud
 
-oh-my-pi (omp) plugin that registers the **Ollama Cloud** provider with the
-always-up-to-date model catalog from
+oh-my-pi (omp) plugin that registers the Ollama Cloud provider with the model
+catalog from
 [srnoob2570/ollama-cloud-catalog](https://github.com/srnoob2570/ollama-cloud-catalog)
-— official pricing, quantization metadata, thinking efforts — plus a live
-streaming-stats widget (tok/s · TTFT · session average).
+(official rate card, thinking efforts) and adds a live streaming-stats widget
+(tok/s, TTFT).
 
 Ported from [`@srnoob2570/opencode-ollama-cloud`](https://github.com/srnoob2570/opencode-ollama-cloud).
-The opencode `/model` command is deliberately not ported (omp ships its own).
+omp ships its own `/model` command, so that one is not ported.
 
 ## Install
 
@@ -15,80 +15,87 @@ The opencode `/model` command is deliberately not ported (omp ships its own).
 omp plugin install @srnoob2570/omp-ollama-cloud
 ```
 
-or, for development:
+For development:
 
 ```bash
 omp plugin link /path/to/omp-ollama-cloud
 ```
 
-omp resolves your existing `OLLAMA_CLOUD_API_KEY` credential for requests
-(log in with `omp /login` if you haven't); the plugin itself only supplies
-models and pricing.
+The plugin only supplies models and pricing; omp resolves the credential
+itself. Set `OLLAMA_CLOUD_API_KEY`, or run `omp /login` and pick Ollama
+Cloud.
 
 ## What it does
 
-- **Provider catalog**: registers the `ollama-cloud` provider via
-  `pi.registerProvider` with `fetchDynamicModels` fed by the published
-  catalog artifact (jsDelivr mirror-race, 5 s timeout, 24 h disk cache at
-  `~/.cache/omp-ollama-cloud/catalog.json`). The catalog's models replace
-  the provider's built-in discovery list.
-- **Official pricing**: each model carries its rate card (USD per 1M tokens)
-  from the artifact, so omp's cost counter and `/usage` show real spend.
-- **Live stats widget**: below the editor, one line —
-  `N.N tok/s · TTFT NNNN ms · Session average` — token-weighted TPS and
-  simple-mean TTFT across main-conversation LLM steps of the current
-  session, measured from omp's own `AssistantMessage` timing (no wire
-  interception). Subagent steps, title generation, auto-thinking, and
-  compaction are excluded by construction.
-- **Self-update check**: one registry probe per boot; if a newer version is
-  published, a second widget line points at the install command (the
-  plugin never mutates its own install).
-- **`/ollama-recost` command**: one-shot sweep over every saved session
-  (`~/.omp/agent/sessions/*/*.jsonl`) re-pricing the $0 ollama-cloud lines
-  from the catalog rate card, then dropping the affected files' incremental
-  offsets in omp-stats' `stats.db` so its next sync re-parses them (its
-  upsert updates the cost columns). Reports files rewritten and requests
-  re-priced.
+- Registers the `ollama-cloud` provider through `pi.registerProvider`, with
+  `fetchDynamicModels` fed by the published catalog artifact. The catalog's
+  models replace omp's built-in discovery list for this provider.
+- Attaches each model's official rate card (USD per 1M tokens) from the
+  artifact, so the cost counter, `/usage`, and omp-stats show real spend.
+  These are the off-peak rates Ollama Cloud publishes; the cache-read rate
+  maps to `cost.cacheRead`.
+- Renders one line below the editor, `42.3 tok/s · TTFT 812 ms`, from omp's
+  own `AssistantMessage` timing (`duration`, `ttft`); it never touches the
+  wire. TPS is total output tokens over total stream time. Ollama Cloud
+  flushes output in bursts, so a decode-only window would report burst
+  speed, sometimes 500+ tok/s. TTFT is the simple mean per step.
+  Only main-conversation ollama-cloud assistant steps count. Subagents run
+  in their own runners, and title generation, auto-thinking, and compaction
+  never reach the main runner as assistant messages.
+- Probes the npm registry once per boot (npm installs only; dev checkouts
+  are skipped). When a newer release exists, a second widget line names the
+  version and the install command. The plugin never mutates its own install.
+- Adds `/ollama-recost`, a one-shot sweep over every saved session file
+  under `~/.omp/agent/sessions` (nested subagent transcripts included). It
+  re-prices the `$0` ollama-cloud lines from the rate card, then drops
+  omp-stats' incremental offsets so the dashboard's next sync re-parses the
+  files (its upsert updates the cost columns). The offset reset covers
+  every session file, including files that needed no rewrite, because a
+  file can be fully priced while its dashboard rows were synced from an
+  older snapshot, and re-parsing is idempotent. Reports files rewritten
+  and requests re-priced.
 
 ## Knobs
 
-Environment variables (read once at startup):
+Environment variables, read once at startup. `off`, `0`, `false`, and `no`
+all turn a knob off.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `OMP_OLLAMA_CLOUD_PRICING` | `on` | `off` zeroes all cost blocks (counter at $0.00) |
-| `OMP_OLLAMA_CLOUD_STATS` | `on` | `off` disables the live widget and collector |
+| `OMP_OLLAMA_CLOUD_PRICING` | `on` | `off` zeroes every cost block (counter stays at $0.00) |
+| `OMP_OLLAMA_CLOUD_STATS` | `on` | `off` disables the widget and the collector |
 | `OMP_OLLAMA_CLOUD_COST_FIX` | `on` | `off` disables the session-cost patch (see below) |
-| `OMP_OLLAMA_CLOUD_DEBUG` | unset | `on` logs one debug notification per completed assistant step |
 
-Note: omp caches the dynamic model list per provider (SQLite, 24 h TTL) in
-`~/.omp/agent/models.db`. After flipping `OMP_OLLAMA_CLOUD_PRICING`, run
+omp caches the dynamic model list per provider in `~/.omp/agent/models.db`
+with a 24 h TTL. After flipping `OMP_OLLAMA_CLOUD_PRICING`, run
 `omp models refresh` to force a fresh fetch and see the change immediately.
 
 ### Session cost patch
 
-omp's `ollama-chat` adapter persists `usage.cost` as $0 for every request
-(it never prices the usage it builds; other adapters do), so omp's cost
-counter, `/usage`, and the `omp-stats` dashboard all show $0 for Ollama
-Cloud. This plugin re-prices the affected session lines at turn end from the
-model's rate card. `OMP_OLLAMA_CLOUD_COST_FIX=off` disables the patch. Once
-upstream omp fixes the adapter, the patch becomes a no-op: lines already
-carrying a non-zero cost are never touched.
+omp's `ollama-chat` adapter never prices usage. It writes `usage.cost` as
+$0 for every request, so the cost counter, `/usage`, and omp-stats all
+show $0 for Ollama Cloud. The plugin re-prices the affected session lines
+at turn end from the model's rate card. `OMP_OLLAMA_CLOUD_COST_FIX=off`
+disables the patch. The plugin never touches lines that already carry a
+non-zero cost, so the patch becomes a no-op once upstream omp fixes the
+adapter.
 
 Because the patch rewrites lines in place (byte lengths change), the plugin
-also resets the file's incremental offset in omp-stats' `stats.db` after each
-patch, so the dashboard's next sync re-parses it. `/ollama-recost` does the
-same for the full history. Lines from the turn currently in flight are priced
-when the turn ends.
+also resets the patched file's incremental offset in omp-stats' `stats.db`,
+so the dashboard's next sync re-parses it. `/ollama-recost` does the same
+for the full history. Lines from the turn in flight are priced when the
+turn ends.
 
 ## Catalog upstream
 
-The artifact is published by scheduled GitHub Actions in
-`srnoob2570/ollama-cloud-catalog`: models.dev shape plus the `x_ollama`
-extension (`reasoning_options`, `quantization`, rate card, hash gate).
-Two mirrors, same file; the loader validates with `isCatalog` before use and
-falls back to the disk cache on network failure (first boot without cache
-falls back to omp's bundled models at $0).
+Scheduled GitHub Actions in `srnoob2570/ollama-cloud-catalog` publish the
+artifact: models.dev shape plus the `x_ollama` extension
+(`reasoning_options`, quantization, rate card, hash gate). Two mirrors serve
+the same file; the loader races them in parallel with a 5 s timeout each and
+takes the first response that passes `isCatalog`. On total failure it falls
+back to the disk cache at `~/.cache/omp-ollama-cloud/catalog.json`,
+refreshed on every successful fetch. With no network and no cached copy the
+provider lists no models until a fetch succeeds.
 
 ## Development
 
