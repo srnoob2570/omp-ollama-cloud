@@ -70,7 +70,7 @@ function installStats(pi: ExtensionAPI): void {
       modelID: message.model,
       ttftMs: Math.max(0, ttft),
       tokensOut: message.usage.output,
-      decodeMs: Math.max(0, message.duration - ttft),
+      durationMs: Math.max(0, message.duration),
       ts: message.timestamp,
     });
     if (steps.length > MAX_COLLECTOR_STEPS) steps.shift();

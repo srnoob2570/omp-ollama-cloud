@@ -62,12 +62,12 @@ describe("decideUpdate", () => {
 describe("summarize + formatLiveLine", () => {
   const step = (
     tokensOut: number,
-    decodeMs: number,
+    durationMs: number,
     ttftMs: number,
   ): StepMeasurement => ({
     modelID: "glm-5.3-flash",
     tokensOut,
-    decodeMs,
+    durationMs,
     ttftMs,
     ts: 0,
   });
@@ -76,7 +76,7 @@ describe("summarize + formatLiveLine", () => {
     expect(formatLiveLine(summarize([]))).toBe("— tok/s · TTFT — ms");
   });
 
-  test("weighted TPS over steps, mean TTFT, live line format", () => {
+  test("end-to-end TPS over steps, mean TTFT, live line format", () => {
     const summary = summarize([step(100, 2000, 300), step(100, 1000, 500)]);
     expect(summary.avgTps).toBeCloseTo(100 / 1.5, 5);
     expect(summary.avgTtftMs).toBe(400);

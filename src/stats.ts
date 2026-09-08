@@ -19,8 +19,8 @@ export interface StepMeasurement {
   ttftMs: number;
   /** Output tokens including reasoning (omp's usage.output semantics). */
   tokensOut: number;
-  /** First token → stream end. */
-  decodeMs: number;
+  /** Request sent → stream end (includes TTFT and prompt processing). */
+  durationMs: number;
   /** Wall-clock start of the request (ms since epoch). */
   ts: number;
 }
@@ -29,8 +29,8 @@ export interface StepMeasurement {
 export interface SessionSummary {
   steps: number;
   tokensOutTotal: number;
-  decodeMsTotal: number;
-  /** Token-weighted: total output tokens over total decode time (tok/s). */
+  durationMsTotal: number;
+  /** End-to-end: total output tokens over total request time (tok/s). */
   avgTps: number;
   /** Simple mean per step (latency is a time, not a volume). */
   avgTtftMs: number;
@@ -39,15 +39,21 @@ export interface SessionSummary {
 const mean = (values: number[]): number =>
   values.length === 0 ? 0 : values.reduce((a, b) => a + b, 0) / values.length;
 
-/** Session average per the ratified contract: weighted TPS, simple-mean TTFT. */
+/**
+ * Session average: token-weighted end-to-end TPS + simple-mean TTFT.
+ * TPS deliberately uses the full step duration (matching omp's builtin
+ * token_rate), NOT duration-minus-TTFT: Ollama Cloud buffers and flushes
+ * output in bursts, so the decode-only window measures burst speed, not
+ * model speed, and reports absurd 500+ tok/s figures.
+ */
 export function summarize(steps: readonly StepMeasurement[]): SessionSummary {
   const tokensOutTotal = steps.reduce((a, s) => a + s.tokensOut, 0);
-  const decodeMsTotal = steps.reduce((a, s) => a + s.decodeMs, 0);
+  const durationMsTotal = steps.reduce((a, s) => a + s.durationMs, 0);
   return {
     steps: steps.length,
     tokensOutTotal,
-    decodeMsTotal,
-    avgTps: decodeMsTotal === 0 ? 0 : tokensOutTotal / (decodeMsTotal / 1000),
+    durationMsTotal,
+    avgTps: durationMsTotal === 0 ? 0 : tokensOutTotal / (durationMsTotal / 1000),
     avgTtftMs: mean(steps.map((s) => s.ttftMs)),
   };
 }
