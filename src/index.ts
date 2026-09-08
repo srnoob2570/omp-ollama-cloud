@@ -16,7 +16,7 @@ import { summarize, type StepMeasurement } from "./stats.ts";
 import { runSelfUpdate } from "./self-update.ts";
 import { formatLiveLine } from "./widget.ts";
 import { fixSessionFileCosts, type CostRates } from "./cost-fix.ts";
-import { recostAllSessions } from "./recost.ts";
+import { recostAllSessions, createStatsOffsetReset } from "./recost.ts";
 
 const WIDGET_KEY = "ollama-cloud-stats";
 const MAX_COLLECTOR_STEPS = 500;
@@ -42,6 +42,7 @@ let steps: StepMeasurement[] = [];
 let updateVersion: string | null = null;
 let renderWidgetLive: ((ctx: ExtensionContext) => void) | undefined;
 const costRatesByModel = new Map<string, CostRates>();
+const resetStatsOffset = createStatsOffsetReset();
 let uiCtxRef: ExtensionContext | undefined;
 
 const widgetLines = (): string[] => {
@@ -107,8 +108,15 @@ function installStats(pi: ExtensionAPI): void {
   });
   pi.on("agent_end", (_event, ctx) => {
     if (!costFixEnabled || !pricingOn || costRatesByModel.size === 0) return;
-    const outcome = fixSessionFileCosts(ctx.sessionManager.getSessionFile(), costRatesByModel);
-    if (outcome === "patched") costRatesByModel.clear();
+    const sessionFile = ctx.sessionManager.getSessionFile();
+    const outcome = fixSessionFileCosts(sessionFile, costRatesByModel);
+    if (outcome === "patched") {
+      costRatesByModel.clear();
+      // The patch rewrites the file in place and changes byte lengths, so
+      // omp-stats' stored offset no longer points at a line boundary — reset
+      // it so the dashboard's next sync re-parses the whole file.
+      resetStatsOffset([sessionFile ?? ""].filter(Boolean));
+    }
   });
   pi.on("session_shutdown", () => {
     if (uiCtx?.mode === "tui" && uiCtx.hasUI)

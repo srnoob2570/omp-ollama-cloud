@@ -75,6 +75,12 @@ model's rate card. `OMP_OLLAMA_CLOUD_COST_FIX=off` disables the patch. Once
 upstream omp fixes the adapter, the patch becomes a no-op: lines already
 carrying a non-zero cost are never touched.
 
+Because the patch rewrites lines in place (byte lengths change), the plugin
+also resets the file's incremental offset in omp-stats' `stats.db` after each
+patch, so the dashboard's next sync re-parses it. `/ollama-recost` does the
+same for the full history. Lines from the turn currently in flight are priced
+when the turn ends.
+
 ## Catalog upstream
 
 The artifact is published by scheduled GitHub Actions in
