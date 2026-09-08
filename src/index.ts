@@ -16,6 +16,7 @@ import { summarize, type StepMeasurement } from "./stats.ts";
 import { runSelfUpdate } from "./self-update.ts";
 import { formatLiveLine } from "./widget.ts";
 import { fixSessionFileCosts, type CostRates } from "./cost-fix.ts";
+import { recostAllSessions } from "./recost.ts";
 
 const WIDGET_KEY = "ollama-cloud-stats";
 const MAX_COLLECTOR_STEPS = 500;
@@ -127,6 +128,27 @@ async function fetchCatalogModels(
   return catalog.models.map((m: CatalogModel) => toProviderModel(m, pricing));
 }
 
+/** Model id → rate card, from the catalog (official rates; empty on failure). */
+async function catalogRates(): Promise<Map<string, CostRates>> {
+  const rates = new Map<string, CostRates>();
+  try {
+    const catalog = await loadCatalog();
+    if (!catalog) return rates;
+    for (const m of catalog.models) {
+      if (!m.cost) continue;
+      rates.set(m.id, {
+        input: m.cost.input,
+        output: m.cost.output,
+        cacheRead: m.cost.cachedInput ?? 0,
+        cacheWrite: 0,
+      });
+    }
+  } catch {
+    // catalog optional: empty map → command reports nothing to re-price
+  }
+  return rates;
+}
+
 export default function ollamaCloudOmp(pi: ExtensionAPI): void {
   pi.setLabel("Ollama Cloud");
   pricingOn = knob("OMP_OLLAMA_CLOUD_PRICING", true);
@@ -142,6 +164,25 @@ export default function ollamaCloudOmp(pi: ExtensionAPI): void {
   });
 
   if (knob("OMP_OLLAMA_CLOUD_STATS", true)) installStats(pi);
+
+  pi.registerCommand("ollama-recost", {
+    description:
+      "Re-price the $0 ollama-cloud lines of every saved session (omp adapter bug workaround)",
+    handler: async (_args, ctx) => {
+      const rates = await catalogRates();
+      if (rates.size === 0) {
+        ctx.ui.notify("ollama-recost: catalog unavailable — nothing to re-price", "warning");
+        return;
+      }
+      const result = recostAllSessions(rates);
+      ctx.ui.notify(
+        result.files > 0
+          ? `ollama-recost: ${result.files} session file(s) rewritten, ${result.lines} request(s) re-priced. Run the omp-stats sync to refresh the dashboard.`
+          : "ollama-recost: no unpriced ollama-cloud lines found",
+        "info",
+      );
+    },
+  });
 
   // Boot-time self-update probe, fire-and-forget, never throws.
   const moduleUrl = import.meta.url;

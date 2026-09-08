@@ -43,6 +43,12 @@ models and pricing.
 - **Self-update check**: one registry probe per boot; if a newer version is
   published, a second widget line points at the install command (the
   plugin never mutates its own install).
+- **`/ollama-recost` command**: one-shot sweep over every saved session
+  (`~/.omp/agent/sessions/*/*.jsonl`) re-pricing the $0 ollama-cloud lines
+  from the catalog rate card, then dropping the affected files' incremental
+  offsets in omp-stats' `stats.db` so its next sync re-parses them (its
+  upsert updates the cost columns). Reports files rewritten and requests
+  re-priced.
 
 ## Knobs
 
