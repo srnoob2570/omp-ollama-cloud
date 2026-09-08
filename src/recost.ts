@@ -4,7 +4,7 @@
 // upsert updates the cost columns on conflict). Runs only on explicit user
 // command — never on boot.
 
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync, type Dirent } from "node:fs";
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -49,26 +49,21 @@ export function createStatsOffsetReset(
 /** Sessions root: ~/.omp/agent/sessions/<dir-slug>/*.jsonl. */
 export function sessionFilesRoot(root: string = join(homedir(), ".omp", "agent", "sessions")): string[] {
   const files: string[] = [];
-  let slugs: string[];
-  try {
-    slugs = readdirSync(root, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-  } catch {
-    return files;
-  }
-  for (const slug of slugs) {
-    const dir = join(root, slug);
-    let names: string[];
+  // Recursive walk: session dirs can nest subagent transcripts
+  // (<session-id>/<agent>/<transcript>.jsonl) two levels below the slug.
+  const walk = (dir: string, depth: number): void => {
+    let entries: Dirent[];
     try {
-      names = readdirSync(dir);
+      entries = readdirSync(dir, { withFileTypes: true });
     } catch {
-      continue;
+      return;
     }
-    for (const name of names) {
-      if (name.endsWith(".jsonl")) files.push(join(dir, name));
+    for (const entry of entries) {
+      if (entry.isDirectory() && depth < 2) walk(join(dir, entry.name), depth + 1);
+      else if (entry.isFile() && entry.name.endsWith(".jsonl")) files.push(join(dir, entry.name));
     }
-  }
+  };
+  walk(root, 0);
   return files;
 }
 
