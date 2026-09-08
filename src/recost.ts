@@ -92,7 +92,6 @@ export function recostAllSessions(
   }
   let filesPatched = 0;
   let linesPatched = 0;
-  const rewritten: string[] = [];
   for (const file of files) {
     const before = fileSnapshot(file, readFileFn);
     if (before === null) continue;
@@ -102,11 +101,16 @@ export function recostAllSessions(
     filesPatched++;
     const after = fileSnapshot(file, readFileFn);
     linesPatched += Math.max(0, beforeZero - countZeroCostLines(after ?? before));
-    rewritten.push(file);
   }
-  if (rewritten.length > 0) {
+  if (filesPatched > 0 && opts.resetOffsetsFn) {
+    // Reset offsets for EVERY session file, not only the rewritten ones: a
+    // file can be fully priced (cost-fix ran live during that session) while
+    // its dashboard rows were synced from a pre-pricing snapshot — the stored
+    // offset then hides the priced content from every future incremental
+    // sync. Re-parsing is idempotent (upsert updates cost columns, dedupes
+    // cross-file), so a full reset is safe and self-healing.
     try {
-      opts.resetOffsetsFn?.(rewritten);
+      opts.resetOffsetsFn(files);
     } catch {
       // dashboard DB optional
     }
