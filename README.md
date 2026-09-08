@@ -52,11 +52,22 @@ Environment variables (read once at startup):
 |---|---|---|
 | `OMP_OLLAMA_CLOUD_PRICING` | `on` | `off` zeroes all cost blocks (counter at $0.00) |
 | `OMP_OLLAMA_CLOUD_STATS` | `on` | `off` disables the live widget and collector |
+| `OMP_OLLAMA_CLOUD_COST_FIX` | `on` | `off` disables the session-cost patch (see below) |
 | `OMP_OLLAMA_CLOUD_DEBUG` | unset | `on` logs one debug notification per completed assistant step |
 
 Note: omp caches the dynamic model list per provider (SQLite, 24 h TTL) in
 `~/.omp/agent/models.db`. After flipping `OMP_OLLAMA_CLOUD_PRICING`, run
 `omp models refresh` to force a fresh fetch and see the change immediately.
+
+### Session cost patch
+
+omp's `ollama-chat` adapter persists `usage.cost` as $0 for every request
+(it never prices the usage it builds; other adapters do), so omp's cost
+counter, `/usage`, and the `omp-stats` dashboard all show $0 for Ollama
+Cloud. This plugin re-prices the affected session lines at turn end from the
+model's rate card. `OMP_OLLAMA_CLOUD_COST_FIX=off` disables the patch. Once
+upstream omp fixes the adapter, the patch becomes a no-op: lines already
+carrying a non-zero cost are never touched.
 
 ## Catalog upstream
 

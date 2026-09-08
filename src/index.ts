@@ -2,7 +2,8 @@
 // the srnoob2570/ollama-cloud-catalog artifact, plus a live streaming-stats
 // widget. Ported from @srnoob2570/opencode-ollama-cloud; /model is
 // deliberately not ported (omp ships its own /model), and the /stats dialog
-// was scoped out (omp ships a /stats dashboard).
+// was scoped out (omp ships a /stats dashboard). Also works around the omp
+// ollama-chat adapter bug that persists usage.cost = $0 (see cost-fix.ts).
 
 import type {
   ExtensionAPI,
@@ -14,10 +15,16 @@ import { toProviderModel } from "./models.ts";
 import { summarize, type StepMeasurement } from "./stats.ts";
 import { runSelfUpdate } from "./self-update.ts";
 import { formatLiveLine } from "./widget.ts";
+import { fixSessionFileCosts, type CostRates } from "./cost-fix.ts";
 
 const WIDGET_KEY = "ollama-cloud-stats";
 const MAX_COLLECTOR_STEPS = 500;
 const PACKAGE_SPEC = "@srnoob2570/omp-ollama-cloud";
+
+// Set at factory time: cost patching requires both the workaround knob and
+// official pricing on (with pricing off the patched value would be $0 anyway).
+let costFixEnabled = false;
+let pricingOn = true;
 
 /** Knobs: omp does not pass options to extension factories, so env vars. */
 function knob(name: string, fallback: boolean): boolean {
@@ -33,6 +40,7 @@ function knob(name: string, fallback: boolean): boolean {
 let steps: StepMeasurement[] = [];
 let updateVersion: string | null = null;
 let renderWidgetLive: ((ctx: ExtensionContext) => void) | undefined;
+const costRatesByModel = new Map<string, CostRates>();
 let uiCtxRef: ExtensionContext | undefined;
 
 const widgetLines = (): string[] => {
@@ -83,8 +91,23 @@ function installStats(pi: ExtensionAPI): void {
       durationMs: Math.max(0, message.duration),
       ts: message.timestamp,
     });
-    if (steps.length > MAX_COLLECTOR_STEPS) steps.shift();
+    if (costFixEnabled && pricingOn) {
+      // omp's ollama-chat adapter never prices usage (upstream bug), so the
+      // session line lands with cost = $0 and every cost consumer (status
+      // line, /usage, omp-stats) shows $0. omp defers the session-file write
+      // to the turn flush, so collect rate cards here and re-price the whole
+      // file at agent_end.
+      const model = ctx.model;
+      if (model && model.id === message.model && !costRatesByModel.has(model.id)) {
+        costRatesByModel.set(model.id, model.cost);
+      }
+    }
     if (uiCtx) renderWidget(ctx);
+  });
+  pi.on("agent_end", (_event, ctx) => {
+    if (!costFixEnabled || !pricingOn || costRatesByModel.size === 0) return;
+    const outcome = fixSessionFileCosts(ctx.sessionManager.getSessionFile(), costRatesByModel);
+    if (outcome === "patched") costRatesByModel.clear();
   });
   pi.on("session_shutdown", () => {
     if (uiCtx?.mode === "tui" && uiCtx.hasUI)
@@ -106,7 +129,9 @@ async function fetchCatalogModels(
 
 export default function ollamaCloudOmp(pi: ExtensionAPI): void {
   pi.setLabel("Ollama Cloud");
-  const pricing = knob("OMP_OLLAMA_CLOUD_PRICING", true) ? "on" : "off";
+  pricingOn = knob("OMP_OLLAMA_CLOUD_PRICING", true);
+  costFixEnabled = knob("OMP_OLLAMA_CLOUD_COST_FIX", true);
+  const pricing = pricingOn ? "on" : "off";
   pi.registerProvider(PROVIDER_ID, {
     // Model-level baseUrl comes from the bundled per-id defaults; the
     // provider-level baseUrl is still required non-undefined by the
