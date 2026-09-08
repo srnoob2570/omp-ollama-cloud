@@ -53,12 +53,22 @@ const renderWidget = (ctx: ExtensionContext): void => {
 
 function installStats(pi: ExtensionAPI): void {
   let uiCtx: ExtensionContext | undefined;
-  pi.on("session_start", (_event, ctx) => {
+  // omp fires session_start on boot, but session switches (/new, resume,
+  // fork) and branches arrive as separate events; the stats window is
+  // per-session, so reset the collector and re-capture the UI context.
+  const attach = (ctx: ExtensionContext): void => {
     if (ctx.mode !== "tui" || !ctx.hasUI) return;
     uiCtx = ctx;
     uiCtxRef = ctx;
     renderWidget(ctx);
-  });
+  };
+  const reset = (ctx: ExtensionContext): void => {
+    steps = [];
+    attach(ctx);
+  };
+  pi.on("session_start", (_event, ctx) => attach(ctx));
+  pi.on("session_switch", (_event, ctx) => reset(ctx));
+  pi.on("session_branch", (_event, ctx) => reset(ctx));
   pi.on("message_end", (event, ctx) => {
     const message = event.message;
     if (message.role !== "assistant") return;
