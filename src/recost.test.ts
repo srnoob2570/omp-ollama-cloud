@@ -103,7 +103,7 @@ describe("recostAllSessions", () => {
     expect(readFileSync(f, "utf8")).toContain("0.5");
   });
 
-  test("resets offsets only for rewritten files", () => {
+  test("resets offsets for every session file once one is rewritten", () => {
     const t = tempSessions();
     const priced = t.add("slug", "priced.jsonl", pricedLine(0.5));
     const unpriced = t.add("slug", "unpriced.jsonl", zeroCostLine());
@@ -118,7 +118,7 @@ describe("recostAllSessions", () => {
     });
     expect(resetFiles.length).toBe(1);
     expect(resetFiles[0]).toContain(unpriced);
-    expect(resetFiles[0]).not.toContain(priced);
+    expect(resetFiles[0]).toContain(priced);
   });
 
   test("skips models without rates", () => {

@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 export const PROVIDER_ID = "ollama-cloud";
 
 /** Normalized catalog model — the plugin's internal view, independent of the
- * artifact's shape. `family` is the id base (familia[:tag]); the registry
+ * artifact's shape. `family` is the id base (family[:tag]); the registry
  * ollama_family stays inside the artifact. */
 export interface CatalogModel {
   id: string;
@@ -170,7 +170,7 @@ export function isCatalog(value: unknown): value is ArtifactDoc {
   });
 }
 
-/** Catalog family = id base (familia[:tag], CONTEXT.md vocabulary). */
+/** Catalog family = id base (family[:tag], CONTEXT.md vocabulary). */
 const familyOf = (id: string): string => {
   const tag = id.indexOf(":");
   return tag === -1 ? id : id.slice(0, tag);

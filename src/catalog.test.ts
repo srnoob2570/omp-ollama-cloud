@@ -180,7 +180,7 @@ describe("isCatalog embedded cost", () => {
 
 // The normalization seam: artifact entry → the plugin's internal view.
 describe("toCatalogModel", () => {
-  test("family is the id base (familia[:tag])", () => {
+  test("family is the id base (family[:tag])", () => {
     expect(toCatalogModel(entry("gpt-oss:120b")).family).toBe("gpt-oss");
     expect(toCatalogModel(entry("glm-5.3")).family).toBe("glm-5.3");
   });
