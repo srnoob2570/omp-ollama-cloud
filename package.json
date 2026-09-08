@@ -1,0 +1,38 @@
+{
+  "name": "@srnoob2570/omp-ollama-cloud",
+  "version": "0.1.0",
+  "description": "oh-my-pi plugin: Ollama Cloud catalog + official pricing + live streaming stats",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/srnoob2570/omp-ollama-cloud.git"
+  },
+  "keywords": [
+    "oh-my-pi",
+    "omp-plugin",
+    "ollama",
+    "ollama-cloud",
+    "provider"
+  ],
+  "main": "./src/index.ts",
+  "omp": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@oh-my-pi/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.0",
+    "typescript": "5.9.3"
+  }
+}
