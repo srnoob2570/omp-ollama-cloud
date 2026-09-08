@@ -82,7 +82,6 @@ function installStats(pi: ExtensionAPI): void {
   pi.on("message_end", (event, ctx) => {
     const message = event.message;
     if (message.role !== "assistant") return;
-    if (message.provider !== PROVIDER_ID) return;
     if (typeof message.duration !== "number") return;
     if (!(message.usage.output > 0)) return;
     const ttft = typeof message.ttft === "number" ? message.ttft : 0;
@@ -98,10 +97,13 @@ function installStats(pi: ExtensionAPI): void {
       // session line lands with cost = $0 and every cost consumer (status
       // line, /usage, omp-stats) shows $0. omp defers the session-file write
       // to the turn flush, so collect rate cards here and re-price the whole
-      // file at agent_end.
-      const model = ctx.model;
-      if (model && model.id === message.model && !costRatesByModel.has(model.id)) {
-        costRatesByModel.set(model.id, model.cost);
+      // file at agent_end. Scoped to ollama-cloud: other providers are
+      // priced by omp itself.
+      if (message.provider === PROVIDER_ID) {
+        const model = ctx.model;
+        if (model && model.id === message.model && !costRatesByModel.has(model.id)) {
+          costRatesByModel.set(model.id, model.cost);
+        }
       }
     }
     if (uiCtx) renderWidget(ctx);
