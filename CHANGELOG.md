@@ -2,15 +2,8 @@
 
 ## [0.1.1] - 2026-09-09
 
-First tagged release. Everything below ships in one go.
-
 ### Added
 
-- Ollama Cloud provider for omp: model catalog from the
-  `srnoob2570/ollama-cloud-catalog` artifact (two CDN mirrors raced in
-  parallel, 5 s timeout, disk cache fallback), official USD rate card per
-  model, thinking efforts, and text/image input mapping. Costs show up in
-  the cost counter, `/usage`, and omp-stats instead of $0.
 - Real account quota in omp's usage surfaces: `/usage` in sessions, the
   status-line footer (polled every 5 min), usage history, and credential
   health checks now read `GET https://ollama.com/api/usage`. Session and
@@ -22,6 +15,27 @@ First tagged release. Everything below ships in one go.
   Note: the standalone `omp usage` CLI command does not load extensions,
   so it keeps reporting "no limits reported" for Ollama Cloud; use the
   in-session surfaces.
+
+### Fixed
+
+- Streaming stats measure every provider's assistant steps again; a
+  provider filter added during the cost-fix work had narrowed the widget
+  to ollama-cloud only. Rate-card capture stays scoped to ollama-cloud,
+  where omp's $0 pricing bug makes the patch necessary.
+
+**Full changelog:** https://github.com/srnoob2570/omp-ollama-cloud/commits/v0.1.1
+
+## [0.1.0] - 2026-09-08
+
+First tagged release. Everything below ships in one go.
+
+### Added
+
+- Ollama Cloud provider for omp: model catalog from the
+  `srnoob2570/ollama-cloud-catalog` artifact (two CDN mirrors raced in
+  parallel, 5 s timeout, disk cache fallback), official USD rate card per
+  model, thinking efforts, and text/image input mapping. Costs show up in
+  the cost counter, `/usage`, and omp-stats instead of $0.
 - Live streaming-stats widget: one line under the editor,
   `42.3 tok/s · TTFT 812 ms`, from omp's own `AssistantMessage` timing.
   TPS uses total stream time because Ollama Cloud flushes output in
@@ -39,4 +53,4 @@ First tagged release. Everything below ships in one go.
   names the version and the install command. The plugin never mutates its
   own install.
 
-**Full changelog:** https://github.com/srnoob2570/omp-ollama-cloud/commits/v0.1.1
+**Full changelog:** https://github.com/srnoob2570/omp-ollama-cloud/commits/v0.1.0
