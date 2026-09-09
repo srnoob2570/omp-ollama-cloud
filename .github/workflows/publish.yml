@@ -26,4 +26,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun test
-      - run: npm publish --access public # Or: npm stage publish
+      # The npm trusted publisher only allows `npm stage publish` (direct
+      # `npm publish` is unchecked), so stage the tarball on npmjs.com and
+      # finish the release from the package settings page.
+      - run: npm stage publish --access public
