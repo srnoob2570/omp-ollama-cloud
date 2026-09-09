@@ -52,12 +52,12 @@ Cloud.
   history (`omp usage --history`), and credential health checks. Session and
   weekly windows render as percent bars with per-model request notes; a
   nonzero four-week activity cost adds a USD row. omp resolves the
-  credential itself (stored login key or `OLLAMA_CLOUD_API_KEY`); the key is
-  only ever sent as a Bearer header to a pinned origin — the fetch target is
-  re-verified as `https://ollama.com/api/usage` immediately before every
-  call, `params.baseUrl` redirections are ignored, and the key is never
-  logged or persisted. Every consumed response field is validated before
-  use; nothing from the response is executed or written to disk.
+  credential itself (stored login key or `OLLAMA_CLOUD_API_KEY`). The plugin
+  sends the key only as a Bearer header to a pinned origin. It re-verifies
+  the fetch target as `https://ollama.com/api/usage` immediately before
+  every call, ignores `params.baseUrl` redirections, and never logs or
+  persists the key. Every consumed response field is validated before use,
+  and nothing from the response is executed or written to disk.
 - Adds `/ollama-recost`, a one-shot sweep over every saved session file
   under `~/.omp/agent/sessions` (nested subagent transcripts included). It
   re-prices the `$0` ollama-cloud lines from the rate card, then drops
@@ -67,6 +67,22 @@ Cloud.
   file can be fully priced while its dashboard rows were synced from an
   older snapshot, and re-parsing is idempotent. Reports files rewritten
   and requests re-priced.
+
+## Usage surfaces
+
+The `omp usage` CLI command prints the account's quota windows with
+per-model request counts. It reads what an open omp session has already
+fetched, so the numbers only appear while an omp window is open and has
+queried the usage at least once. With no live session it shows the
+built-in stub's "no limits reported". Use `omp usage --history` instead;
+it works from the recorded snapshots alone.
+
+![`omp usage` CLI output showing Ollama Cloud session and weekly quota bars](docs/images/command-omp-usage.png)
+
+`omp usage --history` records snapshots and renders the trend per window:
+
+![`omp usage --history` showing session and weekly usage peaks over 7 days](docs/images/command-omp-usage-history.png)
+
 
 ## Knobs
 
