@@ -3,8 +3,9 @@
 oh-my-pi (omp) plugin that registers the Ollama Cloud provider with the model
 catalog from
 [srnoob2570/ollama-cloud-catalog](https://github.com/srnoob2570/ollama-cloud-catalog)
-(official rate card, thinking efforts) and adds a live streaming-stats widget
-(tok/s, TTFT).
+(official rate card, thinking efforts), adds a live streaming-stats widget
+(tok/s, TTFT), and fetches real account quota from ollama.com's usage API
+for omp's `/usage` surfaces.
 
 Ported from [`@srnoob2570/opencode-ollama-cloud`](https://github.com/srnoob2570/opencode-ollama-cloud).
 omp ships its own `/model` command, so that one is not ported.
@@ -45,6 +46,18 @@ Cloud.
 - Probes the npm registry once per boot (npm installs only; dev checkouts
   are skipped). When a newer release exists, a second widget line names the
   version and the install command. The plugin never mutates its own install.
+- Fetches the account's real quota from `GET https://ollama.com/api/usage`
+  and feeds omp's normalized usage pipeline: `/usage` in the TUI and ACP
+  sessions, the status-line footer (polled every 5 min), recorded usage
+  history (`omp usage --history`), and credential health checks. Session and
+  weekly windows render as percent bars with per-model request notes; a
+  nonzero four-week activity cost adds a USD row. omp resolves the
+  credential itself (stored login key or `OLLAMA_CLOUD_API_KEY`); the key is
+  only ever sent as a Bearer header to a pinned origin — the fetch target is
+  re-verified as `https://ollama.com/api/usage` immediately before every
+  call, `params.baseUrl` redirections are ignored, and the key is never
+  logged or persisted. Every consumed response field is validated before
+  use; nothing from the response is executed or written to disk.
 - Adds `/ollama-recost`, a one-shot sweep over every saved session file
   under `~/.omp/agent/sessions` (nested subagent transcripts included). It
   re-prices the `$0` ollama-cloud lines from the rate card, then drops
@@ -65,12 +78,18 @@ all turn a knob off.
 | `OMP_OLLAMA_CLOUD_PRICING` | `on` | `off` zeroes every cost block (counter stays at $0.00) |
 | `OMP_OLLAMA_CLOUD_STATS` | `on` | `off` disables the widget and the collector |
 | `OMP_OLLAMA_CLOUD_COST_FIX` | `on` | `off` disables the session-cost patch (see below) |
+| `OMP_OLLAMA_CLOUD_USAGE` | `on` | `off` restores omp's built-in stub (reports "no quota API") |
 
 omp caches the dynamic model list per provider in `~/.omp/agent/models.db`
 with a 24 h TTL. After flipping `OMP_OLLAMA_CLOUD_PRICING`, run
 `omp models refresh` to force a fresh fetch and see the change immediately.
 
-### Session cost patch
+The extension system only runs inside sessions, so the standalone
+`omp usage` CLI command keeps showing the built-in stub's "no limits
+reported" for Ollama Cloud regardless of this knob; the session surfaces
+(`/usage`, footer, `--history`) show the real numbers.
+
+## Session cost patch
 
 omp's `ollama-chat` adapter never prices usage. It writes `usage.cost` as
 $0 for every request, so the cost counter, `/usage`, and omp-stats all

@@ -1,6 +1,6 @@
 # Anglicize working note
 
-Inventory (18 tracked files) and the term table for unifying the repo into
+Inventory (20 tracked files) and the term table for unifying the repo into
 English. One English equivalent per source term.
 
 ## Glossary
@@ -33,7 +33,8 @@ symbol, quoted, not translated.
 | src/models.ts | preserve | English |
 | src/models.test.ts | preserve | English |
 | src/recost.ts | preserve | English |
-| src/recost.test.ts | preserve | English |
+| src/usage.ts | preserve | English |
+| src/usage.test.ts | preserve | English |
 | src/self-update.ts | preserve | English |
 | src/self-update.test.ts | preserve | English |
 | src/stats.ts | preserve | English |
