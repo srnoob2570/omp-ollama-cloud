@@ -1,9 +1,10 @@
 // oh-my-pi extension: Ollama Cloud provider with the official rate card from
 // the srnoob2570/ollama-cloud-catalog artifact, plus a live streaming-stats
-// widget. Ported from @srnoob2570/opencode-ollama-cloud; /model is
-// deliberately not ported (omp ships its own /model), and the /stats dialog
-// was scoped out (omp ships a /stats dashboard). Also works around the omp
-// ollama-chat adapter bug that persists usage.cost = $0 (see cost-fix.ts).
+// widget and a real quota-usage fetcher for omp's /usage surfaces. Ported
+// from @srnoob2570/opencode-ollama-cloud; /model is deliberately not ported
+// (omp ships its own /model), and the /stats dialog was scoped out (omp ships
+// a /stats dashboard). Also works around the omp ollama-chat adapter bug
+// that persists usage.cost = $0 (see cost-fix.ts).
 
 import type {
   ExtensionAPI,
@@ -11,6 +12,7 @@ import type {
   ProviderModelConfig,
 } from "@oh-my-pi/pi-coding-agent";
 import { loadCatalog, PROVIDER_ID, type CatalogModel } from "./catalog.ts";
+import { createOllamaCloudUsageProvider } from "./usage.ts";
 import { toProviderModel } from "./models.ts";
 import { summarize, type StepMeasurement } from "./stats.ts";
 import { runSelfUpdate } from "./self-update.ts";
@@ -24,8 +26,10 @@ const PACKAGE_SPEC = "@srnoob2570/omp-ollama-cloud";
 
 // Set at factory time: cost patching requires both the workaround knob and
 // official pricing on (with pricing off the patched value would be $0 anyway).
+// usageEnabled gates the /api/usage fetcher registration below.
 let costFixEnabled = false;
 let pricingOn = true;
+let usageEnabled = true;
 
 /** Knobs: omp does not pass options to extension factories, so env vars. */
 function knob(name: string, fallback: boolean): boolean {
@@ -163,6 +167,7 @@ export default function ollamaCloudOmp(pi: ExtensionAPI): void {
   pi.setLabel("Ollama Cloud");
   pricingOn = knob("OMP_OLLAMA_CLOUD_PRICING", true);
   costFixEnabled = knob("OMP_OLLAMA_CLOUD_COST_FIX", true);
+  usageEnabled = knob("OMP_OLLAMA_CLOUD_USAGE", true);
   const pricing = pricingOn ? "on" : "off";
   pi.registerProvider(PROVIDER_ID, {
     // Model-level baseUrl comes from the bundled per-id defaults; the
@@ -171,6 +176,13 @@ export default function ollamaCloudOmp(pi: ExtensionAPI): void {
     baseUrl: "https://ollama.com",
     api: "ollama-chat",
     fetchDynamicModels: async () => fetchCatalogModels(pricing),
+    // Replaces omp's built-in "no standalone quota usage API" ollama-cloud
+    // stub with the real GET https://ollama.com/api/usage fetcher. omp wires
+    // it through AuthStorage.setRuntimeUsageProvider for the session's
+    // lifetime, which feeds /usage, the status-line footer, usage history,
+    // and credential health probes. The stub stays active for surfaces that
+    // don't load extensions (the standalone `omp usage` CLI command).
+    ...(usageEnabled ? { usage: createOllamaCloudUsageProvider(PROVIDER_ID) } : {}),
   });
 
   if (knob("OMP_OLLAMA_CLOUD_STATS", true)) installStats(pi);
