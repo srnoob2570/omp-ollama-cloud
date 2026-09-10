@@ -26,6 +26,14 @@ The plugin only supplies models and pricing; omp resolves the credential
 itself. Set `OLLAMA_CLOUD_API_KEY`, or run `omp /login` and pick Ollama
 Cloud.
 
+## Models
+
+The plugin replaces omp's built-in discovery list for `ollama-cloud` with
+the published catalog, so `omp models` shows the real lineup: context and
+max-output limits, thinking efforts, and image support per model.
+
+![`omp models` listing 19 ollama-cloud models with context limits, thinking efforts, and image support](docs/images/command-omp-models.png)
+
 ## What it does
 
 - Registers the `ollama-cloud` provider through `pi.registerProvider`, with
