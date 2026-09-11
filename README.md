@@ -103,6 +103,12 @@ all turn a knob off.
 | `OMP_OLLAMA_CLOUD_STATS` | `on` | `off` disables the widget and the collector |
 | `OMP_OLLAMA_CLOUD_COST_FIX` | `on` | `off` disables the session-cost patch (see below) |
 | `OMP_OLLAMA_CLOUD_USAGE` | `on` | `off` restores omp's built-in stub (reports "no quota API") |
+| `OMP_OLLAMA_CLOUD_BASE_URL` | `https://ollama.com` | provider endpoint, e.g. a local proxy. Trailing slashes are stripped |
+
+omp loads `~/.omp/agent/.env` at startup, so a line such as
+`OMP_OLLAMA_CLOUD_BASE_URL=http://127.0.0.1:11435` is enough to route every
+request through a local proxy. The quota fetcher keeps calling
+`https://ollama.com/api/usage` directly; only model traffic is redirected.
 
 omp caches the dynamic model list per provider in `~/.omp/agent/models.db`
 with a 24 h TTL. After flipping `OMP_OLLAMA_CLOUD_PRICING`, run

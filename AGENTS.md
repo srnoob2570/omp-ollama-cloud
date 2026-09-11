@@ -65,7 +65,7 @@ No lint/format script. Release = push tag `v*`; CI gates on typecheck + full `bu
 - **Hand-rolled type guards, no schema library**: `isCatalog`, `unknown`-narrowing helpers (`positiveFinite`, `isNonEmptyString`, `isStringArray`); branded outcome unions (`CostFixOutcome = "patched" | "not-found" | "unavailable"`, `SelfUpdateOutcome`).
 - **Injectable seams for tests**: optional params (`readFileFn`, `writeFileFn`, `fetchFn`, `resetOffsetsFn`) — never a mocking framework, never mocked fs.
 - **Sync fs for hot rewrite paths** (`cost-fix.ts`, `recost.ts`); async for orchestration (`loadCatalog`, `runSelfUpdate`). `void promise` fire-and-forget for non-critical work (cache write, self-update).
-- **Config via env knobs, read once at factory time** (omp passes no factory options): `OMP_OLLAMA_CLOUD_PRICING`, `OMP_OLLAMA_CLOUD_COST_FIX`, `OMP_OLLAMA_CLOUD_STATS`, `OMP_OLLAMA_CLOUD_USAGE` — all default on; `off`/`0`/`false`/`no` disable.
+- **Config via env knobs, read once at factory time** (omp passes no factory options): `OMP_OLLAMA_CLOUD_PRICING`, `OMP_OLLAMA_CLOUD_COST_FIX`, `OMP_OLLAMA_CLOUD_STATS`, `OMP_OLLAMA_CLOUD_USAGE` — all default on; `off`/`0`/`false`/`no` disable. `OMP_OLLAMA_CLOUD_BASE_URL` overrides the provider endpoint (default `https://ollama.com`), used by ollama-cloud-meter's quick configuration; omp eagerly loads `~/.omp/agent/.env`.
 - **Wire names stay untranslated**: artifact fields (`x_ollama`, `cache_read`, `models_hash`), session fingerprints (`"provider":"ollama-cloud"`), omp API fields (`cost.cacheRead`). See `GLOSSARY.md`.
 
 ## Important Files

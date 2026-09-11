@@ -169,11 +169,16 @@ export default function ollamaCloudOmp(pi: ExtensionAPI): void {
   costFixEnabled = knob("OMP_OLLAMA_CLOUD_COST_FIX", true);
   usageEnabled = knob("OMP_OLLAMA_CLOUD_USAGE", true);
   const pricing = pricingOn ? "on" : "off";
+  // OMP_OLLAMA_CLOUD_BASE_URL points the provider at a local proxy (e.g. the
+  // ollama-cloud-meter reverse proxy). Model-level baseUrl comes from the
+  // bundled per-id defaults; the provider-level baseUrl must stay
+  // non-undefined for the model builder, so keep the ollama.com origin as the
+  // default. omp loads ~/.omp/agent/.env eagerly, so a line there is enough.
+  const baseUrl =
+    process.env.OMP_OLLAMA_CLOUD_BASE_URL?.trim().replace(/\/+$/, "") ||
+    "https://ollama.com";
   pi.registerProvider(PROVIDER_ID, {
-    // Model-level baseUrl comes from the bundled per-id defaults; the
-    // provider-level baseUrl is still required non-undefined by the
-    // model builder, so set the ollama.com origin.
-    baseUrl: "https://ollama.com",
+    baseUrl,
     api: "ollama-chat",
     fetchDynamicModels: async () => fetchCatalogModels(pricing),
     // Replaces omp's built-in "no standalone quota usage API" ollama-cloud
