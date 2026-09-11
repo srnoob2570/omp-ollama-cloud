@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.2] - 2026-09-11
+
+### Added
+
+- `OMP_OLLAMA_CLOUD_BASE_URL` overrides the provider endpoint for model
+  traffic, so a local proxy such as ollama-cloud-meter can meter every
+  request. Defaults to `https://ollama.com`; trailing slashes are
+  stripped. omp eagerly loads `~/.omp/agent/.env`, so the variable can
+  live there. Quota checks keep calling
+  `https://ollama.com/api/usage` directly.
+
 ## [0.1.1] - 2026-09-09
 
 ### Added
